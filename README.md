@@ -37,6 +37,9 @@ Head to the [Releases](../../releases/latest) page and download the binary for y
 ---
 
 ## How to Use
+
+For a full step-by-step guide with screenshots, check out the **[Guide](docs/GUIDE.md)**.
+
 1. **Backup** your savefolder
 2. **Open the tool** and select your PNG image.
 3. Set the **Item Type** and **Item ID** matching the file you want to replace.
