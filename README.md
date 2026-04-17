@@ -1,4 +1,4 @@
-# Tomodachi Texture Tool
+# TTT (Tomodachi Texture Tool)
 
 A modern GUI tool for converting PNG images into Tomodachi Life: Living the Dream's custom texture formats — no command line required.
 
