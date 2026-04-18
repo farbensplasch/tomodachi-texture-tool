@@ -320,17 +320,15 @@ class App(ctk.CTk):
 
         def run():
             try:
-                cp, up = converter.convert_and_export(
+                cp, up, tp = converter.convert_and_export(
                     png_path=self._png_path,
                     output_dir=Path(output_str),
                     item_id=item_id,
                     mode=mode,
-                    use_srgb=False,
-                    resize_mode=2,
                     on_progress=lambda msg, pct: self.after(
                         0, lambda m=msg, p=pct: self._on_progress(m, p)),
                 )
-                self.after(0, lambda: self._on_success(cp, up))
+                self.after(0, lambda: self._on_success(cp, up, tp))
             except Exception as exc:
                 self.after(0, lambda e=exc: self._on_error(str(e)))
 
@@ -340,11 +338,11 @@ class App(ctk.CTk):
         self._progress.set(pct)
         self._set_status(msg)
 
-    def _on_success(self, cp: Path, up: Path):
+    def _on_success(self, cp: Path, up: Path, tp: Path):
         self._converting = False
         self._convert_btn.configure(state="normal", text="Convert & Export")
         self._progress.set(1.0)
-        self._set_status(f"Done — {cp.name}  +  {up.name}", success=True)
+        self._set_status(f"Done — wrote {cp.name}, {up.name}, {tp.name}", success=True)
         self._refresh_highest_id()
 
     def _on_error(self, msg: str):
