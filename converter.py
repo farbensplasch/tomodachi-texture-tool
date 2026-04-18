@@ -79,17 +79,22 @@ def png_to_ugctex(img: Image.Image) -> bytes:
 
 
 def png_to_thumb(img: Image.Image) -> bytes:
-    """Convert a PIL image to a raw swizzled thumbnail blob (128x128 RGBA).
+    """Convert a PIL image to a raw swizzled thumbnail blob (256x256 BC3/DXT5).
 
     The game writes a *_Thumb.ugctex.zs alongside every .canvas.zs / .ugctex.zs
     pair.  Without it the game considers the item incomplete and removes all
     three texture files on the next load.
+
+    Format: 256×256 BC3 (DXT5), swizzle_mode=3.
+    Decompressed size: 256*256/(4*4)*16 = 65536 bytes.
     """
     img = img.convert("RGBA")
-    if img.size != (128, 128):
-        img = ImageOps.fit(img, (128, 128), Image.LANCZOS)
-    raw = img.tobytes("raw")
-    return bytes(nsw_swizzle(raw, (128, 128), (1, 1), 4, SWIZZLE_MODE))
+    if img.size != (256, 256):
+        img = ImageOps.fit(img, (256, 256), Image.LANCZOS)
+    buf = io.BytesIO()
+    img.save(buf, format="DDS", pixel_format="DXT5")
+    dxt5_data = buf.getvalue()[128:]  # strip 128-byte DDS header
+    return bytes(nsw_swizzle(dxt5_data, (256, 256), (4, 4), 16, 3))
 
 
 def get_highest_id(folder: Path, mode: str) -> int | None:
