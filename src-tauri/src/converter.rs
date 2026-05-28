@@ -1,8 +1,32 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use image::{imageops, DynamicImage, ImageEncoder};
 use serde::Serialize;
+
+pub enum ScaleMode {
+    Nearest,
+    Lanczos3,
+}
+
+impl FromStr for ScaleMode {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.trim().to_ascii_lowercase().as_str() {
+            "nearest" | "nearestneighbor" | "nearest-neighbor" => {
+                Ok(Self::Nearest)
+            }
+
+            "lanczos" | "lanczos3" => {
+                Ok(Self::Lanczos3)
+            }
+
+            _ => Err(()),
+        }
+    }
+}
 
 // ─── Item type file-name templates ───────────────────────────────────────────
 
@@ -118,9 +142,17 @@ fn srgb_to_lin(v: u8) -> u8 {
 /// sRGB→linear is required because the Switch GPU samples BC1/BC3 textures as
 /// linear data and the renderer works in linear light; without the conversion
 /// the stored sRGB values look too bright on screen.
-fn prepare_rgba(img: &DynamicImage, w: u32, h: u32) -> Vec<u8> {
+///
+/// None of that matters if you use nearest neighbour tho :)
+fn prepare_rgba(img: &DynamicImage, w: u32, h: u32, alpha_threshold: &u8, scale_mode: &ScaleMode) -> Vec<u8> {
     let src = img.to_rgba8();
     let (sw, sh) = (src.width(), src.height());
+
+    // Select resize filter
+    let filter = match scale_mode {
+        ScaleMode::Nearest  => imageops::FilterType::Nearest,
+        ScaleMode::Lanczos3 => imageops::FilterType::Lanczos3,
+    };
 
     if sw == w && sh == h {
         // No resize needed — still apply sRGB→linear.
@@ -141,14 +173,21 @@ fn prepare_rgba(img: &DynamicImage, w: u32, h: u32) -> Vec<u8> {
         ]
     }).collect();
 
-    // 2. Resize the premultiplied image.
+
     let pm_img  = image::RgbaImage::from_raw(sw, sh, premul).unwrap();
-    let resized = imageops::resize(&pm_img, w, h, imageops::FilterType::Lanczos3);
+
+    // Resize with selected filter
+    let resized = imageops::resize(&pm_img, w, h, filter);
 
     // 3. Un-premultiply: RGB ← RGB / (A / 255), then apply sRGB→linear.
     //    Fully-transparent pixels stay (0,0,0,0).
     resized.chunks_exact(4).flat_map(|p| {
-        let a = p[3];
+        let mut a = p[3];
+
+        if a < *alpha_threshold {
+            a = 0;
+        }
+        
         if a == 0 {
             [0u8, 0, 0, 0]
         } else {
@@ -198,8 +237,8 @@ fn bc3_decompress(data: &[u8], w: u32, h: u32) -> Vec<u8> {
 //   ugctex  384×384 BC1 food → width= 96blk, height= 96blk, bpe=8,  block_height=16
 //   thumb   256×256 BC3      → width= 64blk, height= 64blk, bpe=16, block_height=8
 
-fn to_canvas(img: &DynamicImage) -> Vec<u8> {
-    let mut rgba = prepare_rgba(img, 256, 256);
+fn to_canvas(img: &DynamicImage, alpha_threshold: &u8, scale_mode: &ScaleMode) -> Vec<u8> {
+    let mut rgba = prepare_rgba(img, 256, 256, alpha_threshold, scale_mode);
     // Snap anti-aliased alpha edges to hard opaque/transparent.
     // Semi-transparent edge pixels appear as a 1-pixel fringe ring in the
     // in-game canvas editor.  Binary alpha eliminates that outline.
@@ -209,8 +248,8 @@ fn to_canvas(img: &DynamicImage) -> Vec<u8> {
     swizzle_block_linear(&rgba, 256, 256, 4, 16)
 }
 
-fn to_ugctex(img: &DynamicImage, px: u32) -> Vec<u8> {
-    let mut rgba = prepare_rgba(img, px, px);
+fn to_ugctex(img: &DynamicImage, px: u32, alpha_threshold: &u8, scale_mode: &ScaleMode) -> Vec<u8> {
+    let mut rgba = prepare_rgba(img, px, px, alpha_threshold, scale_mode);
     // Snap anti-aliased alpha edges to hard opaque/transparent before BC1.
     // BC1 blocks that contain a mix of opaque and semi-transparent pixels use
     // "transparent mode" (c0 ≤ c1), which reserves one colour slot for the
@@ -225,8 +264,8 @@ fn to_ugctex(img: &DynamicImage, px: u32) -> Vec<u8> {
     swizzle_block_linear(&blocks, blk_dim, blk_dim, 8, 16)
 }
 
-fn to_thumb(img: &DynamicImage) -> Vec<u8> {
-    let rgba   = prepare_rgba(img, 256, 256);
+fn to_thumb(img: &DynamicImage, alpha_threshold: &u8, scale_mode: &ScaleMode) -> Vec<u8> {
+    let rgba   = prepare_rgba(img, 256, 256, alpha_threshold, scale_mode);
     let blocks = bc3_compress(&rgba, 256, 256);
     swizzle_block_linear(&blocks, 64, 64, 16, 8)
 }
@@ -654,6 +693,8 @@ pub fn convert(
     item_type: &str,
     item_id: u32,
     on_progress: impl Fn(&str, f64),
+    alpha_threshold: u8,
+    scale_mode: ScaleMode,
 ) -> Result<ConvertResult, String> {
     let t = tmpl(item_type)
         .ok_or_else(|| format!("Unknown item type: {item_type}"))?;
@@ -663,14 +704,14 @@ pub fn convert(
     let img = image::open(png_path).map_err(|e| format!("Cannot open image: {e}"))?;
 
     on_progress("Building CANVAS (256×256 RGBA)…", 0.20);
-    let canvas_raw = to_canvas(&img);
+    let canvas_raw = to_canvas(&img, &alpha_threshold, &scale_mode);
 
     let ugctex_px = t.ugctex_px;
     on_progress(&format!("Building UGCTEX ({}×{} BC1)…", ugctex_px, ugctex_px), 0.40);
-    let ugctex_raw = to_ugctex(&img, ugctex_px);
+    let ugctex_raw = to_ugctex(&img, ugctex_px, &alpha_threshold, &scale_mode);
 
     on_progress("Building thumbnail (256×256 BC3)…", 0.58);
-    let thumb_raw  = to_thumb(&img);
+    let thumb_raw  = to_thumb(&img, &alpha_threshold, &scale_mode);
 
     on_progress("Compressing with ZSTD…", 0.72);
     let canvas_zs = zstd_compress(&canvas_raw).map_err(|e| e.to_string())?;

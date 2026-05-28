@@ -473,7 +473,109 @@ h1 {
 }
 
 /* ════════════════════════════════════════════
-   SCREEN 5 — Processing
+   SCREEN 5 — Resize settings
+════════════════════════════════════════════ */
+.settings-wrap {
+  width:100%;
+  max-width:520px;
+  display:flex;
+  flex-direction:column;
+  gap:18px;
+}
+
+.setting-card {
+  background:var(--card);
+  border:1.5px solid var(--border);
+  border-radius:14px;
+  padding:18px;
+}
+
+.setting-title {
+  font-size:13px;
+  font-weight:600;
+  color:var(--text);
+  margin-bottom:12px;
+}
+
+.scale-grid {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+
+.scale-option {
+  border:1.5px solid var(--border);
+  background:rgba(255,255,255,.03);
+  border-radius:12px;
+  padding:14px 12px;
+  cursor:pointer;
+  transition:all .2s;
+}
+
+.scale-option:hover {
+  border-color:rgba(255,255,255,.2);
+  background:var(--card-h);
+}
+
+.scale-option.on {
+  border-color:var(--accent);
+  background:var(--card-on);
+}
+
+.scale-name {
+  font-size:13px;
+  font-weight:600;
+  margin-bottom:4px;
+}
+
+.scale-desc {
+  font-size:11px;
+  line-height:1.5;
+  color:var(--text2);
+}
+
+.threshold-row {
+  display:flex;
+  align-items:center;
+  gap:14px;
+}
+
+.threshold-slider {
+  flex:1;
+  appearance:none;
+  height:4px;
+  border-radius:999px;
+  background:rgba(255,255,255,.12);
+  outline:none;
+}
+
+.threshold-slider::-webkit-slider-thumb {
+  appearance:none;
+  width:16px;
+  height:16px;
+  border-radius:50%;
+  background:var(--accent);
+  cursor:pointer;
+  border:none;
+}
+
+.threshold-value {
+  width:48px;
+  text-align:center;
+  font-size:13px;
+  color:var(--text);
+  font-weight:600;
+}
+
+.threshold-hint {
+  margin-top:10px;
+  font-size:11px;
+  line-height:1.5;
+  color:var(--text3);
+}
+
+/* ════════════════════════════════════════════
+   SCREEN 6 — Processing
 ════════════════════════════════════════════ */
 .progress-wrap { width:100%; max-width:420px; margin-bottom:16px; }
 .progress-track {
@@ -497,7 +599,7 @@ h1 {
 @keyframes spin { to { transform:rotate(360deg); } }
 
 /* ════════════════════════════════════════════
-   SCREEN 6 — Done
+   SCREEN 7 — Done
 ════════════════════════════════════════════ */
 .done-icon {
   width:64px; height:64px; margin-bottom:18px;
@@ -728,15 +830,107 @@ h1 {
       <div class="btns">
         <button class="sec" onclick="go(3,'b')">← Back</button>
         <button class="sec" id="exportBtn" onclick="exportCurrentSlot()" style="display:none">↓ Export PNG</button>
-        <button class="pri" id="convertBtn" onclick="startConvert()" disabled>Convert</button>
+        <button class="pri" id="s4next" onclick="go(5)" disabled>Continue →</button>
       </div>
     </div>
   </div>
 
   <!-- ══════════════════════════════════════
-       SCREEN 5 — Processing
+     SCREEN 5 — Resize settings
+══════════════════════════════════════ -->
+<div class="screen" id="s5">
+  <h1>Resize settings</h1>
+
+  <p class="sub">
+    Choose how your texture should be resized before conversion.
+  </p>
+
+  <div class="content">
+
+    <div class="settings-wrap">
+
+      <div class="setting-card">
+        <div class="setting-title">Scaling mode</div>
+
+        <div class="scale-grid">
+
+          <div class="scale-option on"
+               id="scaleLanczos"
+               onclick="setScaleMode('lanczos3')">
+
+            <div class="scale-name">Lanczos3</div>
+
+            <div class="scale-desc">
+              Smooth high-quality resizing.<br>
+              Best for artwork, photos, gradients and detailed textures.
+            </div>
+          </div>
+
+          <div class="scale-option"
+               id="scaleNearest"
+               onclick="setScaleMode('nearest')">
+
+            <div class="scale-name">Nearest</div>
+
+            <div class="scale-desc">
+              Sharp pixel-perfect scaling.<br>
+              Best for pixel art and low-resolution sprites.
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="setting-card">
+
+        <div class="setting-title">
+          Alpha threshold
+        </div>
+
+        <div class="threshold-row">
+
+          <input
+            type="range"
+            min="0"
+            max="255"
+            value="192"
+            class="threshold-slider"
+            id="alphaSlider"
+            oninput="setAlphaThreshold(this.value)"
+          >
+
+          <div class="threshold-value" id="alphaValue">
+            192
+          </div>
+
+        </div>
+
+        <div class="threshold-hint">
+          Lower values preserve soft transparency.<br>
+          Higher values create sharper cutout edges.
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="btns">
+      <button class="sec" onclick="go(4,'b')">
+        ← Back
+      </button>
+
+      <button class="pri" id="convertBtn" onclick="startConvert()">
+        Convert
+      </button>
+    </div>
+
+  </div>
+</div>
+
+  <!-- ══════════════════════════════════════
+       SCREEN 6 — Processing
   ══════════════════════════════════════ -->
-  <div class="screen" id="s5">
+  <div class="screen" id="s6">
     <div class="spinner"></div>
     <h1>Converting…</h1>
     <div class="progress-wrap">
@@ -748,9 +942,9 @@ h1 {
   </div>
 
   <!-- ══════════════════════════════════════
-       SCREEN 6 — Done
+       SCREEN 7 — Done
   ══════════════════════════════════════ -->
-  <div class="screen" id="s6">
+  <div class="screen" id="s7">
     <svg class="done-icon" viewBox="0 0 64 64" fill="none">
       <circle cx="32" cy="32" r="30" fill="rgba(170,199,255,.1)"/>
       <circle cx="32" cy="32" r="22" fill="rgba(170,199,255,.15)"/>
@@ -801,11 +995,16 @@ h1 {
     </div>
   </div>
 
-  <!-- Progress dots (7 dots for screens 0–6) -->
+  <!-- Progress dots (8 dots for screens 0–7) -->
   <div class="dots" id="dots">
     <div class="dot on"></div>
-    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
-    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
   </div>
 
 </div><!-- .app -->
@@ -825,6 +1024,9 @@ let saveFolder      = null;
 let unlisten        = null;
 let emuSaves        = [];     // cached results from find_emulator_saves
 let lastBackupPath  = null;   // set after each successful conversion for Undo
+
+let selectedScaleMode = 'lanczos3';
+let selectedAlphaThreshold = 192;
 
 // ── Startup ───────────────────────────────────────────────────────────────────
 invoke('find_emulator_saves').then(results => { emuSaves = results || []; });
@@ -1010,7 +1212,7 @@ let selectedSlotId = null;
 async function goToSlots() {
   go(4);
   selectedSlotId = null;
-  document.getElementById('convertBtn').disabled = true;
+  document.getElementById('s4next').disabled = true;
   document.getElementById('slotsLoading').style.display = '';
   document.getElementById('slotsGrid').style.display = 'none';
   document.getElementById('slotsGrid').innerHTML = '';
@@ -1076,12 +1278,12 @@ function selectSlot(card, id, warning, preview) {
   document.querySelectorAll('.slot-card').forEach(c => c.classList.remove('on'));
   card.classList.add('on');
   selectedSlotId = id;
-  const btn = document.getElementById('convertBtn');
+  const btn = document.getElementById('s4next');
   if (warning) {
-    btn.textContent = '⚠ Convert anyway';
+    btn.textContent = '⚠ Continue anyway →';
     btn.title = 'This texture is only saved in folder 1 and not yet in folder 0. It may not be fully saved yet — proceed with caution.';
   } else {
-    btn.textContent = 'Convert';
+    btn.textContent = 'Continue →';
     btn.title = '';
   }
   btn.disabled = false;
@@ -1099,12 +1301,28 @@ function selectSlot(card, id, warning, preview) {
   bar.classList.add('show');
 }
 
-// ── Screen 5: conversion ─────────────────────────────────────────────────────
+// ── Screen 5: resize settings ─────────────────────────────────────────────────────
+function setScaleMode(mode) {
+  selectedScaleMode = mode;
+
+  document.getElementById('scaleLanczos')
+    .classList.toggle('on', mode === 'lanczos3');
+
+  document.getElementById('scaleNearest')
+    .classList.toggle('on', mode === 'nearest');
+}
+
+function setAlphaThreshold(v) {
+  selectedAlphaThreshold = parseInt(v);
+  document.getElementById('alphaValue').textContent = v;
+}
+
+// ── Screen 6: conversion ─────────────────────────────────────────────────────
 async function startConvert() {
   const id = selectedSlotId;
   if (!selectedFile || !saveFolder || !id) return;
 
-  go(5);
+  go(6);
 
   unlisten = await listen('progress', ev => {
     const { step, pct } = ev.payload;
@@ -1118,6 +1336,8 @@ async function startConvert() {
       saveFolder,
       itemType:     selectedType,
       itemId:       selectedSlotId,
+      alphaThreshold: selectedAlphaThreshold,
+      scaleModeName: selectedScaleMode,
     });
 
     if (unlisten) { unlisten(); unlisten = null; }
@@ -1135,7 +1355,7 @@ async function startConvert() {
     document.getElementById('undoBtn').style.display = lastBackupPath ? '' : 'none';
 
     busy = false;
-    go(6);
+    go(7);
 
   } catch (err) {
     if (unlisten) { unlisten(); unlisten = null; }
@@ -1275,9 +1495,9 @@ function reset() {
   document.getElementById('slotsLoading').style.display = '';
   document.getElementById('compareBar').classList.remove('show');
   document.getElementById('exportBtn').style.display = 'none';
-  const cb = document.getElementById('convertBtn');
+  const cb = document.getElementById('s4next');
   cb.disabled = true;
-  cb.textContent = 'Convert';
+  cb.textContent = 'Continue →';
   cb.title = '';
 
   // Reset done screen
@@ -1331,8 +1551,9 @@ document.addEventListener('keydown', e => {
       case 1: if (saveFolder)       document.getElementById('s1next').click();   break;
       case 2: if (selectedFile)     document.getElementById('s2next').click();    break;
       case 3: goToSlots(); break;
-      case 4: if (selectedSlotId)   document.getElementById('convertBtn').click(); break;
-      case 6: reset(); break;
+      case 4: if (selectedSlotId)   document.getElementById('s4next').click(); break;
+      case 5: startConvert(); break;
+      case 7: reset(); break;
     }
     return;
   }

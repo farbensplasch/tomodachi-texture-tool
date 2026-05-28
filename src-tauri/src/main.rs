@@ -139,8 +139,15 @@ async fn convert_texture(
     save_folder: String,
     item_type: String,
     item_id: u32,
+    alpha_threshold: u8,
+    scale_mode_name: String,
 ) -> Result<converter::ConvertResult, String> {
     let win = window.clone();
+
+    let scale_mode: converter::ScaleMode = scale_mode_name
+    .parse()
+    .unwrap_or(converter::ScaleMode::Lanczos3);
+
     tokio::task::spawn_blocking(move || {
         converter::convert(
             std::path::Path::new(&png_path),
@@ -150,6 +157,9 @@ async fn convert_texture(
             |step, pct| {
                 win.emit("progress", ProgressEvent { step: step.to_string(), pct }).ok();
             },
+            alpha_threshold,
+            scale_mode,
+            
         )
     })
     .await
